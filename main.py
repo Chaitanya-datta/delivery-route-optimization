@@ -7,7 +7,8 @@ Usage:
     python3 main.py --input data/input.csv --seed 42 --runs 10
 
 Loads the input, runs all three algorithms on it, prints the result of
-each one and then a comparison table over several runs.
+each one and then a comparison table over several runs. The route plot
+and the convergence plot of the first run are saved in the results folder.
 The algorithm parameters are in config.py.
 """
 
@@ -22,6 +23,7 @@ from utils.route import format_route
 
 PROJECT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_INPUT = os.path.join(PROJECT_FOLDER, "data", "input.csv")
+RESULTS_FOLDER = os.path.join(PROJECT_FOLDER, "results")
 
 
 def print_heading(title):
@@ -61,12 +63,40 @@ def print_result(result):
     print(f"Stopped because:\n{result['stop_reason']}\n")
 
 
+def save_plots(locations, results, seed):
+    """Save the route plot and the convergence plot of one run of each algorithm."""
+    try:
+        from utils.visualization import plot_convergence, plot_routes
+    except ImportError:
+        print("Plots were not created because Matplotlib is not installed.")
+        print("Install it with: pip install -r requirements.txt")
+        return
+
+    os.makedirs(RESULTS_FOLDER, exist_ok=True)
+    customers = len(results[0]["best_route"])
+    title = f"{customers} customers, seed {seed}"
+
+    routes_path = plot_routes(
+        locations, results, os.path.join(RESULTS_FOLDER, "routes.png"),
+        title=f"Best routes found ({title})",
+    )
+    convergence_path = plot_convergence(
+        results, os.path.join(RESULTS_FOLDER, "convergence.png"),
+        title=f"Convergence ({title})",
+    )
+
+    print("Plots saved:")
+    print(f"  {routes_path}")
+    print(f"  {convergence_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Delivery route optimization")
     parser.add_argument("--input", default=DEFAULT_INPUT, help="path to the input CSV file")
     parser.add_argument("--seed", type=int, default=config.DEFAULT_SEED, help="random seed of the first run")
     parser.add_argument("--runs", type=int, default=config.DEFAULT_RUNS,
                         help="number of runs used for the comparison table")
+    parser.add_argument("--no-plots", action="store_true", help="do not save the plots")
     args = parser.parse_args()
 
     if args.runs < 1:
@@ -102,6 +132,11 @@ def main():
     print()
     print("Std Dev is the standard deviation of the best distance over the runs.")
     print("Execution Time, Iterations/Generations and Route Evaluations are averages per run.")
+
+    # Plots of the first run (the one that used --seed).
+    if not args.no_plots:
+        print()
+        save_plots(locations, [results[0] for results in all_results], args.seed)
 
 
 if __name__ == "__main__":

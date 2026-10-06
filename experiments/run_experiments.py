@@ -10,10 +10,13 @@ For every dataset size:
     2. every algorithm is run `runs` times, with seeds 1, 2, 3, ...
     3. the results are summarized in a comparison table
 
-All algorithms get the same datasets and the same seeds. The numbers are
-also saved in the results folder:
-    experiment_summary.csv - one row per dataset size and algorithm
-    experiment_runs.csv    - one row per single run
+All algorithms get the same datasets and the same seeds. The numbers and
+the plots are saved in the results folder:
+    experiment_summary.csv        - one row per dataset size and algorithm
+    experiment_runs.csv           - one row per single run
+    comparison_chart.png          - average distance per algorithm and size
+    routes_N_customers.png        - best routes of the first run (seed 1)
+    convergence_N_customers.png   - convergence of the first run (seed 1)
 """
 
 import argparse
@@ -34,11 +37,25 @@ DATA_FOLDER = os.path.join(PROJECT_FOLDER, "data")
 RESULTS_FOLDER = os.path.join(PROJECT_FOLDER, "results")
 
 
-def run_experiments(sizes, runs, dataset_seed, data_folder, results_folder):
+def load_plot_functions():
+    """Return the plotting module, or None if Matplotlib is not installed."""
+    try:
+        from utils import visualization
+    except ImportError:
+        print("Plots will not be created because Matplotlib is not installed.")
+        print("Install it with: pip install -r requirements.txt\n")
+        return None
+    return visualization
+
+
+def run_experiments(sizes, runs, dataset_seed, data_folder, results_folder, make_plots=True):
     """
     Run the experiments and return (summary_rows, run_rows).
     Both are lists of dictionaries, ready to be written to CSV files.
     """
+    os.makedirs(results_folder, exist_ok=True)
+    visualization = load_plot_functions() if make_plots else None
+
     seeds = list(range(1, runs + 1))
     summary_rows = []
     run_rows = []
@@ -53,10 +70,12 @@ def run_experiments(sizes, runs, dataset_seed, data_folder, results_folder):
         print("=" * 126)
 
         summaries = []
+        first_runs = []  # the run with the first seed, used for the plots
         for name in ALGORITHM_NAMES:
             results = run_many(name, locations, customer_ids, seeds)
             summary = summarize(results)
             summaries.append(summary)
+            first_runs.append(results[0])
 
             summary_rows.append({
                 "customers": size,
@@ -87,7 +106,26 @@ def run_experiments(sizes, runs, dataset_seed, data_folder, results_folder):
         print_comparison_table(summaries)
         print()
 
-    os.makedirs(results_folder, exist_ok=True)
+        if visualization:
+            plot_title = f"{size} customers, seed {seeds[0]}"
+            visualization.plot_routes(
+                locations, first_runs,
+                os.path.join(results_folder, f"routes_{size}_customers.png"),
+                title=f"Best routes found ({plot_title})",
+            )
+            visualization.plot_convergence(
+                first_runs,
+                os.path.join(results_folder, f"convergence_{size}_customers.png"),
+                title=f"Convergence ({plot_title})",
+            )
+
+    if visualization:
+        visualization.plot_comparison(
+            summary_rows,
+            os.path.join(results_folder, "comparison_chart.png"),
+            title=f"Average best distance over {runs} runs (line: plus/minus one standard deviation)",
+        )
+
     write_csv(os.path.join(results_folder, "experiment_summary.csv"), summary_rows)
     write_csv(os.path.join(results_folder, "experiment_runs.csv"), run_rows)
 
@@ -109,6 +147,7 @@ def main():
                         help="runs of every algorithm on every dataset")
     parser.add_argument("--dataset-seed", type=int, default=config.EXPERIMENT_DATASET_SEED,
                         help="seed used to generate the datasets")
+    parser.add_argument("--no-plots", action="store_true", help="do not save the plots")
     args = parser.parse_args()
 
     if args.runs < 1:
@@ -116,11 +155,12 @@ def main():
     if min(args.sizes) < 1:
         parser.error("every size must be at least 1")
 
-    run_experiments(args.sizes, args.runs, args.dataset_seed, DATA_FOLDER, RESULTS_FOLDER)
+    run_experiments(args.sizes, args.runs, args.dataset_seed, DATA_FOLDER, RESULTS_FOLDER,
+                    make_plots=not args.no_plots)
 
     print(f"Results saved in {RESULTS_FOLDER}")
-    print("  experiment_summary.csv")
-    print("  experiment_runs.csv")
+    for file_name in sorted(os.listdir(RESULTS_FOLDER)):
+        print(f"  {file_name}")
     print()
     print("Std Dev is the standard deviation of the best distance over the runs.")
     print("Execution Time, Iterations/Generations and Route Evaluations are averages per run.")

@@ -1,8 +1,8 @@
 # Comparative Delivery Route Optimization Using Hill Climbing, Simulated Annealing and Genetic Algorithm
 
-> **Status:** Phases 1–5 of 7 are complete. All three algorithms are
-> implemented and tested, and the comparison experiments have been run. The
-> plots are added in Phase 6.
+> **Status:** Phases 1–6 of 7 are complete. All three algorithms are
+> implemented and tested, the comparison experiments have been run and the
+> plots are generated. Phase 7 is the final validation.
 
 ## 1. Problem statement
 
@@ -360,12 +360,65 @@ routes, so the Genetic Algorithm's first random population of 50 already
 contains a shortest route. The sample also has more than one route of length
 232.95, which is why two different routes with the same distance appear in
 the Genetic Algorithm output. The differences between the algorithms show up
-on larger inputs (Phase 5).
+on larger inputs (see the experiment results in section 13).
+
+### Plots
+
+`python3 main.py` also saves two plots of the first run (the one that used
+`--seed`) in the `results` folder. Use `--no-plots` to skip them.
+
+| File | What it shows |
+|---|---|
+| `results/routes.png` | One map per algorithm: the warehouse (square), the customers (dots) with their IDs, and the best route found. The distance is in the title. |
+| `results/convergence.png` | One panel per algorithm: best route distance (y-axis) after each iteration or generation (x-axis). |
+
+The experiment runner saves the same two plots for every dataset size (first
+run, seed 1) and one comparison chart:
+
+| File | What it shows |
+|---|---|
+| `results/routes_N_customers.png` | Best routes for the dataset with N customers. |
+| `results/convergence_N_customers.png` | Convergence for the dataset with N customers. |
+| `results/comparison_chart.png` | Average best distance of each algorithm for each dataset size. The thin line on each bar is plus/minus one standard deviation over the 30 runs. |
+
+Every plotted value comes from the result of an actual run. Nothing is
+typed in by hand.
+
+Example, 30 customers, seed 1:
+
+![Best routes for 30 customers](results/routes_30_customers.png)
+
+![Convergence for 30 customers](results/convergence_30_customers.png)
+
+Comparison over 30 runs:
+
+![Comparison chart](results/comparison_chart.png)
+
+**How to read the convergence plot**
+
+- The three panels share the y-axis, so the distances can be compared
+  directly.
+- They do **not** share the x-axis, because one step is a different amount
+  of work for each algorithm (one whole neighbourhood, one swap, one whole
+  population). The plot shows the *shape* of each search, not which one is
+  faster. For the amount of work, use the Route Evaluations column of the
+  comparison table.
+- Hill Climbing goes down in a few large steps and then stops. Simulated
+  Annealing drops quickly, then improves in smaller steps as the temperature
+  falls, and is flat at the end when almost no worse route is accepted. The
+  Genetic Algorithm improves over many generations, with long flat stretches
+  between improvements.
+- The route and convergence plots show **one** run. One run can differ from
+  the average: in the 30-customer example above, Hill Climbing (659.26) is
+  shorter than the Genetic Algorithm (670.57), although over 30 runs the
+  Genetic Algorithm has the shorter average (641.50 against 676.29). Use the
+  comparison chart and table to compare the algorithms.
 
 ## 10. Installation
 
 Python 3.10 or newer is required. The algorithms use only the Python
-standard library. Matplotlib is needed only for the plots (Phase 6):
+standard library. Matplotlib is needed only for the plots. Without it the
+program still runs and prints all results, and only the plots are skipped.
 
 ```
 pip install -r requirements.txt
@@ -383,6 +436,7 @@ python3 main.py --input data/customers_20.csv --seed 42 --runs 10
 | `--input` | path to the input CSV file | `data/input.csv` |
 | `--seed` | random seed of the first run | `42` |
 | `--runs` | number of runs behind the comparison table | `10` |
+| `--no-plots` | do not save the plots | plots are saved |
 
 The detailed result printed for each algorithm is the run that used
 `--seed`. The comparison table uses seeds `seed`, `seed + 1`, ... The same
@@ -429,8 +483,9 @@ For each dataset size (5, 10, 20 and 30 customers) the script:
 All three algorithms get the same datasets, the same seeds, the same
 distance function and the parameters from `config.py`. The numbers are saved
 in `results/experiment_summary.csv` (one row per size and algorithm) and
-`results/experiment_runs.csv` (one row per single run). Running the script
-again overwrites those two files.
+`results/experiment_runs.csv` (one row per single run), together with the
+plots described in section 9. Running the script again overwrites those
+files. Use `--no-plots` to skip the plots.
 
 ### Results
 
@@ -561,12 +616,14 @@ delivery-route-optimization/
 │   ├── data_loader.py           reads and checks the CSV
 │   ├── distance.py              Euclidean distance and the route cost function
 │   ├── route.py                 route representation, swap action, validation
-│   └── comparison.py            runs the algorithms several times, comparison table
+│   ├── comparison.py            runs the algorithms several times, comparison table
+│   └── visualization.py         route plot, convergence plot, comparison chart
 ├── experiments/
 │   └── run_experiments.py       experiments on 5/10/20/30 customers
-├── results/
-│   ├── experiment_summary.csv   written by the experiment runner
-│   └── experiment_runs.csv
+├── results/                     written by main.py and the experiment runner
+│   ├── experiment_summary.csv
+│   ├── experiment_runs.csv
+│   └── *.png                    plots
 ├── tests/                       unit tests, one file per phase
 ├── config.py                    all parameters
 ├── main.py
