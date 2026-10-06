@@ -1,8 +1,8 @@
 # Comparative Delivery Route Optimization Using Hill Climbing, Simulated Annealing and Genetic Algorithm
 
-> **Status:** Phases 1–4 of 7 are complete. All three algorithms are
-> implemented and tested. The experiments and the plots are added in later
-> phases, and this README is updated as each one is finished.
+> **Status:** Phases 1–5 of 7 are complete. All three algorithms are
+> implemented and tested, and the comparison experiments have been run. The
+> plots are added in Phase 6.
 
 ## 1. Problem statement
 
@@ -322,6 +322,27 @@ Stopped because:
 generation limit reached
 ```
 
+After the three results the program prints a comparison table. Each
+algorithm is run several times (`--runs`, default 10) with seeds 42, 43, ...
+This is the actual table for `data/input.csv`:
+
+```
+COMPARISON OVER 10 RUNS (seeds 42 to 51)
+Algorithm             Best Distance  Average Distance   Std Dev  Execution Time (s)  Iterations/Generations  Route Evaluations
+------------------------------------------------------------------------------------------------------------------------------
+Hill Climbing                232.95            232.95      0.00              0.0000                     2.4               25.0
+Simulated Annealing          232.95            232.95      0.00              0.0379                 11508.0            11509.0
+Genetic Algorithm            232.95            232.95      0.00              0.0778                   200.0            10050.0
+```
+
+- **Std Dev** is the standard deviation of the best distance over the runs.
+  A small value means the algorithm gives similar results every time.
+- **Execution Time**, **Iterations/Generations** and **Route Evaluations**
+  are averages per run.
+- **Route Evaluations** is the number of routes whose distance was
+  calculated. It measures the work done in the same unit for all three
+  algorithms.
+
 The unit of work is different for each algorithm:
 
 - **Hill Climbing iteration:** one full look at the whole neighbourhood
@@ -354,13 +375,18 @@ pip install -r requirements.txt
 
 ```
 python3 main.py
-python3 main.py --input data/input.csv --seed 42
+python3 main.py --input data/customers_20.csv --seed 42 --runs 10
 ```
 
 | Option | Meaning | Default |
 |---|---|---|
 | `--input` | path to the input CSV file | `data/input.csv` |
-| `--seed` | random seed, for reproducible runs | `42` |
+| `--seed` | random seed of the first run | `42` |
+| `--runs` | number of runs behind the comparison table | `10` |
+
+The detailed result printed for each algorithm is the run that used
+`--seed`. The comparison table uses seeds `seed`, `seed + 1`, ... The same
+seed always gives the same routes and distances.
 
 Run the tests:
 
@@ -370,15 +396,110 @@ python3 -m unittest discover -s tests -v
 
 ## 12. How to generate datasets
 
-*To be added in Phase 5.*
+```
+python3 data/generate_data.py
+```
+
+creates `data/customers_5.csv`, `customers_10.csv`, `customers_20.csv` and
+`customers_30.csv`. To create one dataset of any size:
+
+```
+python3 data/generate_data.py --customers 15 --seed 7 --output data/my_data.csv
+```
+
+The data is synthetic. The warehouse `W` is at the centre (50, 50) of a
+100 x 100 map and every customer gets random whole-number coordinates
+between 0 and 100. No two locations share a position. The same seed always
+produces the same file (default seed: 42).
 
 ## 13. How to run experiments
 
-*To be added in Phase 5.*
+```
+python3 experiments/run_experiments.py
+python3 experiments/run_experiments.py --runs 10 --sizes 5 10
+```
+
+For each dataset size (5, 10, 20 and 30 customers) the script:
+
+1. generates the dataset (dataset seed 42),
+2. runs each algorithm 30 times, with seeds 1 to 30,
+3. checks that every returned route is valid,
+4. prints a comparison table.
+
+All three algorithms get the same datasets, the same seeds, the same
+distance function and the parameters from `config.py`. The numbers are saved
+in `results/experiment_summary.csv` (one row per size and algorithm) and
+`results/experiment_runs.csv` (one row per single run). Running the script
+again overwrites those two files.
+
+### Results
+
+These are the actual results of `python3 experiments/run_experiments.py`
+(30 runs per algorithm). Distances are the same on every machine because
+the seeds are fixed; times depend on the computer.
+
+| Customers | Algorithm | Best | Average | Std Dev | Worst | Time (s) | Iterations / Generations | Route evaluations |
+|---|---|---|---|---|---|---|---|---|
+| 5 | Hill Climbing | 274.31 | 276.69 | 6.18 | 292.19 | 0.0001 | 2.9 | 29.7 |
+| 5 | Simulated Annealing | 274.31 | 274.31 | 0.00 | 274.31 | 0.0373 | 11508.0 | 11509.0 |
+| 5 | Genetic Algorithm | 274.31 | 274.31 | 0.00 | 274.31 | 0.0776 | 200.0 | 10050.0 |
+| 10 | Hill Climbing | 398.58 | 424.62 | 22.46 | 483.57 | 0.0007 | 6.3 | 283.0 |
+| 10 | Simulated Annealing | 398.58 | 403.95 | 4.64 | 415.69 | 0.0497 | 11508.0 | 11509.0 |
+| 10 | Genetic Algorithm | 398.58 | 408.33 | 9.92 | 429.84 | 0.0925 | 200.0 | 10050.0 |
+| 20 | Hill Climbing | 499.00 | 572.71 | 46.43 | 687.79 | 0.0141 | 15.0 | 2857.3 |
+| 20 | Simulated Annealing | 479.47 | 533.97 | 28.30 | 581.81 | 0.0759 | 11508.0 | 11509.0 |
+| 20 | Genetic Algorithm | 480.26 | 544.78 | 32.42 | 591.56 | 0.1231 | 200.0 | 10050.0 |
+| 30 | Hill Climbing | 608.78 | 676.29 | 42.65 | 818.01 | 0.0695 | 23.6 | 10267.0 |
+| 30 | Simulated Annealing | 577.97 | 629.33 | 33.85 | 694.24 | 0.0989 | 11508.0 | 11509.0 |
+| 30 | Genetic Algorithm | 571.19 | 641.50 | 41.44 | 757.52 | 0.1514 | 200.0 | 10050.0 |
+
+### What the results show
+
+- **5 customers:** all three algorithms found the same best route (274.31).
+  Simulated Annealing and the Genetic Algorithm found it in all 30 runs.
+  Hill Climbing found it in 26 of 30 runs and stopped at a longer local
+  optimum in the other 4.
+- **10 customers:** all three found the same best route (398.58) at least
+  once, but the averages differ: Simulated Annealing 403.95, Genetic
+  Algorithm 408.33, Hill Climbing 424.62.
+- **20 and 30 customers:** Hill Climbing has the longest average route and
+  the largest variation. Simulated Annealing has the shortest average at both
+  sizes, and the Genetic Algorithm is second. The gap between Simulated
+  Annealing and the Genetic Algorithm (about 11 to 12) is small compared with
+  the variation between runs (standard deviation about 28 to 41), so these
+  runs do not show a clear winner between those two. At 30 customers the
+  single shortest route of all (571.19) came from the Genetic Algorithm.
+- **Consistency:** Hill Climbing varies the most from run to run, because
+  the local optimum it reaches depends completely on the random starting
+  route.
+- **Time:** Hill Climbing is the fastest at every size. Simulated Annealing
+  takes less time than the Genetic Algorithm at every size (about half at
+  5 customers, about two thirds at 30) for a similar number of route
+  evaluations.
+
+### Is the comparison fair?
+
+Simulated Annealing (11,509 route evaluations) and the Genetic Algorithm
+(10,050) are given a similar amount of work at every size. Hill Climbing
+stops by itself when it reaches a local optimum, so the work it does grows
+with the problem: about 30 evaluations for 5 customers, 2,857 for 20 and
+10,267 for 30. Its results on the small datasets therefore come from far
+less work, and giving it more iterations would not help, because it cannot
+move once no swap improves the route. At 30 customers all three do a similar
+amount of work, and Hill Climbing still has the longest average route.
+
+### Limits of these experiments
+
+- One dataset per size. Other datasets could give different numbers.
+- The parameters were chosen once as reasonable values and were not tuned.
+  Different parameters could change the order of Simulated Annealing and
+  the Genetic Algorithm.
+- The true shortest route is not known for 10, 20 and 30 customers, so the
+  results only compare the algorithms with each other.
 
 ## 14. Parameters
 
-Parameters are set at the top of `main.py`.
+All parameters are in `config.py`. `main.py` and the experiment runner both read them from there.
 
 **Hill Climbing**
 
@@ -413,29 +534,41 @@ The best route of each generation is always copied into the next one
 **Amount of work.** The Genetic Algorithm calculates
 50 x (200 + 1) = 10,050 route distances per run, and Simulated Annealing
 11,509, so those two do a similar amount of work. Hill Climbing does much
-less because it stops as soon as it reaches a local optimum.
+less on small inputs because it stops as soon as it reaches a local optimum.
+
+**Experiments**
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `DEFAULT_RUNS` | 10 | Runs behind the comparison table in `main.py`. |
+| `EXPERIMENT_SIZES` | 5, 10, 20, 30 | Numbers of customers tested. |
+| `EXPERIMENT_RUNS` | 30 | Runs of every algorithm on every dataset. |
+| `EXPERIMENT_DATASET_SEED` | 42 | Seed used to generate the datasets. |
 
 ## 15. Project structure
 
 ```
 delivery-route-optimization/
 ├── data/
-│   └── input.csv            sample input
+│   ├── input.csv                sample input
+│   ├── generate_data.py         synthetic dataset generator
+│   └── customers_N.csv          generated datasets (5, 10, 20, 30)
 ├── algorithms/
 │   ├── hill_climbing.py
 │   ├── simulated_annealing.py
 │   └── genetic_algorithm.py
 ├── utils/
-│   ├── data_loader.py       reads and checks the CSV
-│   ├── distance.py          Euclidean distance and the route cost function
-│   └── route.py             route representation and validation
-├── experiments/             experiment runner (Phase 5)
-├── results/                 saved plots and result files (Phases 5–6)
-├── tests/
-│   ├── test_phase1.py
-│   ├── test_hill_climbing.py
-│   ├── test_simulated_annealing.py
-│   └── test_genetic_algorithm.py
+│   ├── data_loader.py           reads and checks the CSV
+│   ├── distance.py              Euclidean distance and the route cost function
+│   ├── route.py                 route representation, swap action, validation
+│   └── comparison.py            runs the algorithms several times, comparison table
+├── experiments/
+│   └── run_experiments.py       experiments on 5/10/20/30 customers
+├── results/
+│   ├── experiment_summary.csv   written by the experiment runner
+│   └── experiment_runs.csv
+├── tests/                       unit tests, one file per phase
+├── config.py                    all parameters
 ├── main.py
 ├── requirements.txt
 └── README.md

@@ -4,40 +4,24 @@ Hill Climbing, Simulated Annealing and Genetic Algorithm
 
 Usage:
     python3 main.py
-    python3 main.py --input data/input.csv --seed 42
+    python3 main.py --input data/input.csv --seed 42 --runs 10
 
-Loads the input and runs all three algorithms on it.
+Loads the input, runs all three algorithms on it, prints the result of
+each one and then a comparison table over several runs.
+The algorithm parameters are in config.py.
 """
 
 import argparse
 import os
-import random
 import sys
 
-from algorithms.genetic_algorithm import genetic_algorithm
-from algorithms.hill_climbing import hill_climbing
-from algorithms.simulated_annealing import simulated_annealing
+import config
+from utils.comparison import ALGORITHM_NAMES, print_comparison_table, run_many, summarize
 from utils.data_loader import WAREHOUSE_ID, load_locations
-from utils.route import build_complete_route, format_route, validate_complete_route
+from utils.route import format_route
 
 PROJECT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_INPUT = os.path.join(PROJECT_FOLDER, "data", "input.csv")
-DEFAULT_SEED = 42
-
-# Hill Climbing parameters
-HC_MAX_ITERATIONS = 1000
-
-# Simulated Annealing parameters
-SA_INITIAL_TEMPERATURE = 100.0
-SA_COOLING_RATE = 0.999
-SA_MINIMUM_TEMPERATURE = 0.001
-SA_MAX_ITERATIONS = 20000
-
-# Genetic Algorithm parameters
-GA_POPULATION_SIZE = 50
-GA_GENERATIONS = 200
-GA_TOURNAMENT_SIZE = 3
-GA_MUTATION_RATE = 0.2
 
 
 def print_heading(title):
@@ -57,13 +41,15 @@ def print_locations(locations, customer_ids):
     print()
 
 
-def print_result(result, count_name, start_name):
-    """
-    Print the result of one algorithm.
+def print_result(result):
+    """Print the result of one run of one algorithm."""
+    if result["algorithm"] == "Genetic Algorithm":
+        count_name = "Generations"
+        start_name = "Best route in the initial population"
+    else:
+        count_name = "Iterations"
+        start_name = "Initial route"
 
-    count_name - 'Iterations' or 'Generations'
-    start_name - what the starting route is called for this algorithm
-    """
     print_heading(result["algorithm"].upper())
     print()
     print(f"{start_name}:\n{format_route(result['initial_route'])}\n")
@@ -78,8 +64,13 @@ def print_result(result, count_name, start_name):
 def main():
     parser = argparse.ArgumentParser(description="Delivery route optimization")
     parser.add_argument("--input", default=DEFAULT_INPUT, help="path to the input CSV file")
-    parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="random seed")
+    parser.add_argument("--seed", type=int, default=config.DEFAULT_SEED, help="random seed of the first run")
+    parser.add_argument("--runs", type=int, default=config.DEFAULT_RUNS,
+                        help="number of runs used for the comparison table")
     args = parser.parse_args()
+
+    if args.runs < 1:
+        parser.error("--runs must be at least 1")
 
     try:
         locations, customer_ids = load_locations(args.input)
@@ -88,45 +79,29 @@ def main():
         sys.exit(1)
 
     print_locations(locations, customer_ids)
+
+    # Every algorithm is run once for each of these seeds. All algorithms
+    # get the same seeds, so Hill Climbing and Simulated Annealing start
+    # from the same random initial routes.
+    seeds = list(range(args.seed, args.seed + args.runs))
+
+    all_results = []
+    for name in ALGORITHM_NAMES:
+        all_results.append(run_many(name, locations, customer_ids, seeds))
+
+    # Detailed output: the first run (the one that used --seed).
     print(f"Random seed: {args.seed}\n")
+    for results in all_results:
+        print_result(results[0])
 
-    # Each algorithm gets its own random generator created from the same
-    # seed. Runs are reproducible, and Hill Climbing and Simulated
-    # Annealing start from the same random initial route.
-    hc_result = hill_climbing(
-        locations,
-        customer_ids,
-        random.Random(args.seed),
-        max_iterations=HC_MAX_ITERATIONS,
-    )
-
-    sa_result = simulated_annealing(
-        locations,
-        customer_ids,
-        random.Random(args.seed),
-        initial_temperature=SA_INITIAL_TEMPERATURE,
-        cooling_rate=SA_COOLING_RATE,
-        minimum_temperature=SA_MINIMUM_TEMPERATURE,
-        max_iterations=SA_MAX_ITERATIONS,
-    )
-
-    ga_result = genetic_algorithm(
-        locations,
-        customer_ids,
-        random.Random(args.seed),
-        population_size=GA_POPULATION_SIZE,
-        generations=GA_GENERATIONS,
-        tournament_size=GA_TOURNAMENT_SIZE,
-        mutation_rate=GA_MUTATION_RATE,
-    )
-
-    # Check that every algorithm returned a valid route.
-    for result in [hc_result, sa_result, ga_result]:
-        validate_complete_route(build_complete_route(result["best_route"]), customer_ids)
-
-    print_result(hc_result, "Iterations", "Initial route")
-    print_result(sa_result, "Iterations", "Initial route")
-    print_result(ga_result, "Generations", "Best route in the initial population")
+    # Comparison over all runs.
+    print("=" * 126)
+    print(f"COMPARISON OVER {args.runs} RUNS (seeds {seeds[0]} to {seeds[-1]})")
+    print("=" * 126)
+    print_comparison_table([summarize(results) for results in all_results])
+    print()
+    print("Std Dev is the standard deviation of the best distance over the runs.")
+    print("Execution Time, Iterations/Generations and Route Evaluations are averages per run.")
 
 
 if __name__ == "__main__":
