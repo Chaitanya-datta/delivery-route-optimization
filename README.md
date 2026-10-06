@@ -1,8 +1,8 @@
 # Comparative Delivery Route Optimization Using Hill Climbing, Simulated Annealing and Genetic Algorithm
 
-> **Status:** Phases 1–6 of 7 are complete. All three algorithms are
-> implemented and tested, the comparison experiments have been run and the
-> plots are generated. Phase 7 is the final validation.
+AI course project, Module 3 – Local Search. Three search algorithms are
+implemented from scratch in Python and compared on the same delivery-routing
+problem.
 
 ## 1. Problem statement
 
@@ -232,9 +232,13 @@ C5,60,10
 - The file is read when the program runs. No coordinates are written inside
   the code, so any CSV in this format can be used.
 
+Coordinates may be whole or decimal numbers, and may be negative. Blank
+lines are ignored. Files saved from Excel as "CSV UTF-8" and files with
+Windows line endings are accepted. One customer is enough to run the program.
+
 The loader reports a clear error for: missing file, empty file, wrong header,
-missing ID, missing coordinate, non-numeric coordinate, duplicate ID, no
-warehouse, and no customers.
+wrong number of values in a row, missing ID, missing coordinate, non-numeric
+coordinate, duplicate ID, no warehouse, and no customers.
 
 ## 9. Output format
 
@@ -356,8 +360,9 @@ All algorithms are given the same seed. Hill Climbing and Simulated
 Annealing therefore start from the same random initial route.
 
 Note on this small sample: with only 5 customers there are just 120 possible
-routes, so the Genetic Algorithm's first random population of 50 already
-contains a shortest route. The sample also has more than one route of length
+routes. Checking all of them shows that 232.95 is the shortest possible
+route for `data/input.csv`, and the Genetic Algorithm's first random
+population of 50 already contains such a route. The sample also has more than one route of length
 232.95, which is why two different routes with the same distance appear in
 the Genetic Algorithm output. The differences between the algorithms show up
 on larger inputs (see the experiment results in section 13).
@@ -423,6 +428,10 @@ program still runs and prints all results, and only the plots are skipped.
 ```
 pip install -r requirements.txt
 ```
+
+No other library is used. In particular, no optimization, machine learning
+or AI library is used: Hill Climbing, Simulated Annealing and the Genetic
+Algorithm are written in this project's own code in the `algorithms` folder.
 
 ## 11. How to run
 
@@ -496,17 +505,17 @@ the seeds are fixed; times depend on the computer.
 | Customers | Algorithm | Best | Average | Std Dev | Worst | Time (s) | Iterations / Generations | Route evaluations |
 |---|---|---|---|---|---|---|---|---|
 | 5 | Hill Climbing | 274.31 | 276.69 | 6.18 | 292.19 | 0.0001 | 2.9 | 29.7 |
-| 5 | Simulated Annealing | 274.31 | 274.31 | 0.00 | 274.31 | 0.0373 | 11508.0 | 11509.0 |
-| 5 | Genetic Algorithm | 274.31 | 274.31 | 0.00 | 274.31 | 0.0776 | 200.0 | 10050.0 |
+| 5 | Simulated Annealing | 274.31 | 274.31 | 0.00 | 274.31 | 0.0381 | 11508.0 | 11509.0 |
+| 5 | Genetic Algorithm | 274.31 | 274.31 | 0.00 | 274.31 | 0.0777 | 200.0 | 10050.0 |
 | 10 | Hill Climbing | 398.58 | 424.62 | 22.46 | 483.57 | 0.0007 | 6.3 | 283.0 |
-| 10 | Simulated Annealing | 398.58 | 403.95 | 4.64 | 415.69 | 0.0497 | 11508.0 | 11509.0 |
-| 10 | Genetic Algorithm | 398.58 | 408.33 | 9.92 | 429.84 | 0.0925 | 200.0 | 10050.0 |
-| 20 | Hill Climbing | 499.00 | 572.71 | 46.43 | 687.79 | 0.0141 | 15.0 | 2857.3 |
-| 20 | Simulated Annealing | 479.47 | 533.97 | 28.30 | 581.81 | 0.0759 | 11508.0 | 11509.0 |
-| 20 | Genetic Algorithm | 480.26 | 544.78 | 32.42 | 591.56 | 0.1231 | 200.0 | 10050.0 |
-| 30 | Hill Climbing | 608.78 | 676.29 | 42.65 | 818.01 | 0.0695 | 23.6 | 10267.0 |
-| 30 | Simulated Annealing | 577.97 | 629.33 | 33.85 | 694.24 | 0.0989 | 11508.0 | 11509.0 |
-| 30 | Genetic Algorithm | 571.19 | 641.50 | 41.44 | 757.52 | 0.1514 | 200.0 | 10050.0 |
+| 10 | Simulated Annealing | 398.58 | 403.95 | 4.64 | 415.69 | 0.0510 | 11508.0 | 11509.0 |
+| 10 | Genetic Algorithm | 398.58 | 408.33 | 9.92 | 429.84 | 0.0932 | 200.0 | 10050.0 |
+| 20 | Hill Climbing | 499.00 | 572.71 | 46.43 | 687.79 | 0.0138 | 15.0 | 2857.3 |
+| 20 | Simulated Annealing | 479.47 | 533.97 | 28.30 | 581.81 | 0.0770 | 11508.0 | 11509.0 |
+| 20 | Genetic Algorithm | 480.26 | 544.78 | 32.42 | 591.56 | 0.1255 | 200.0 | 10050.0 |
+| 30 | Hill Climbing | 608.78 | 676.29 | 42.65 | 818.01 | 0.0705 | 23.6 | 10267.0 |
+| 30 | Simulated Annealing | 577.97 | 629.33 | 33.85 | 694.24 | 0.1009 | 11508.0 | 11509.0 |
+| 30 | Genetic Algorithm | 571.19 | 641.50 | 41.44 | 757.52 | 0.1535 | 200.0 | 10050.0 |
 
 ### What the results show
 
@@ -549,12 +558,15 @@ amount of work, and Hill Climbing still has the longest average route.
 - The parameters were chosen once as reasonable values and were not tuned.
   Different parameters could change the order of Simulated Annealing and
   the Genetic Algorithm.
-- The true shortest route is not known for 10, 20 and 30 customers, so the
-  results only compare the algorithms with each other.
+- For 5 customers all 120 possible routes were checked directly, and 274.31
+  is the shortest possible route. For 10, 20 and 30 customers the true
+  shortest route is not known, so there the results only compare the
+  algorithms with each other.
 
 ## 14. Parameters
 
-All parameters are in `config.py`. `main.py` and the experiment runner both read them from there.
+All parameters are in `config.py`. `main.py` and the experiment runner both
+read them from there.
 
 **Hill Climbing**
 
@@ -624,7 +636,7 @@ delivery-route-optimization/
 │   ├── experiment_summary.csv
 │   ├── experiment_runs.csv
 │   └── *.png                    plots
-├── tests/                       unit tests, one file per phase
+├── tests/                       unit tests
 ├── config.py                    all parameters
 ├── main.py
 ├── requirements.txt

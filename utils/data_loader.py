@@ -32,7 +32,9 @@ def load_locations(csv_path):
     if not os.path.isfile(csv_path):
         raise FileNotFoundError(f"Input file not found: {csv_path}")
 
-    with open(csv_path, newline="") as csv_file:
+    # "utf-8-sig" also accepts files saved by Excel as "CSV UTF-8", which
+    # start with an invisible marker before the first column name.
+    with open(csv_path, newline="", encoding="utf-8-sig") as csv_file:
         rows = list(csv.reader(csv_file))
 
     # Ignore completely blank lines.

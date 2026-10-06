@@ -31,7 +31,7 @@ SAMPLE_INPUT = os.path.join(PROJECT_FOLDER, "data", "input.csv")
 def write_temp_csv(text):
     """Write text to a temporary CSV file and return its path."""
     handle, path = tempfile.mkstemp(suffix=".csv")
-    with os.fdopen(handle, "w") as csv_file:
+    with os.fdopen(handle, "w", encoding="utf-8", newline="") as csv_file:
         csv_file.write(text)
     return path
 
@@ -60,6 +60,16 @@ class TestDataLoader(unittest.TestCase):
 
     def test_blank_lines_and_spaces_are_tolerated(self):
         locations, customer_ids = self.load_text("id, x, y\n\nW, 0, 0\n C1 , 3 , 4 \n\n")
+        self.assertEqual(customer_ids, ["C1"])
+        self.assertEqual(locations["C1"], (3.0, 4.0))
+
+    def test_file_saved_by_excel_with_byte_order_mark(self):
+        locations, customer_ids = self.load_text("\ufeffID,X,Y\nW,0,0\nC1,3,4\n")
+        self.assertEqual(customer_ids, ["C1"])
+        self.assertEqual(locations["W"], (0.0, 0.0))
+
+    def test_windows_line_endings(self):
+        locations, customer_ids = self.load_text("ID,X,Y\r\nW,0,0\r\nC1,3,4\r\n")
         self.assertEqual(customer_ids, ["C1"])
         self.assertEqual(locations["C1"], (3.0, 4.0))
 
