@@ -1,0 +1,3 @@
+# The algorithms use only the Python standard library.
+# Matplotlib is used only for drawing the plots.
+matplotlib
