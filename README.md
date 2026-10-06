@@ -1,9 +1,9 @@
 # Comparative Delivery Route Optimization Using Hill Climbing, Simulated Annealing and Genetic Algorithm
 
-> **Status:** Phase 1 of 7 is complete (input loading, distance, route
-> representation, route validation). The three algorithms, the experiments
-> and the plots are added in later phases, and this README is updated as
-> each one is finished.
+> **Status:** Phases 1–2 of 7 are complete (input loading, distance, route
+> representation, route validation, Hill Climbing). Simulated Annealing, the
+> Genetic Algorithm, the experiments and the plots are added in later phases,
+> and this README is updated as each one is finished.
 
 ## 1. Problem statement
 
@@ -53,7 +53,40 @@ distance = sqrt((x2 - x1)^2 + (y2 - y1)^2)
 
 ## 5. Hill Climbing
 
-*To be implemented in Phase 2.*
+Code: `algorithms/hill_climbing.py`
+
+Hill Climbing keeps **one** current route and repeatedly tries to improve it.
+
+1. Start from a random route and calculate its distance.
+2. Build the **neighbourhood**: every route that can be made by swapping two
+   customer positions. For `n` customers there are `n(n-1)/2` neighbours.
+3. Calculate the distance of every neighbour and remember the shortest one.
+4. **Decision:** if that best neighbour is shorter than the current route,
+   move to it. Otherwise stop.
+5. Repeat from step 2 until no neighbour is shorter, or the iteration limit
+   is reached.
+
+This is the *steepest-descent* form of Hill Climbing: it looks at all
+neighbours and takes the best one. The decision in the code is:
+
+```python
+# AI DECISION: move to the improving neighbouring route.
+if best_neighbour_cost < current_cost:
+    current_route = best_neighbour
+    current_cost = best_neighbour_cost
+```
+
+**Why it works:** every move makes the route strictly shorter, so the
+distance can only go down and the search must eventually stop.
+
+**Its weakness:** it stops at the first route that no single swap can
+improve. This is a **local optimum**. A shorter route may exist, but reaching
+it would need a move that first makes the route longer, and Hill Climbing
+never accepts a worse route. Which local optimum it reaches depends on the
+random starting route.
+
+Randomness is used only for the starting route. After that the search is
+deterministic.
 
 ## 6. Simulated Annealing
 
@@ -88,36 +121,46 @@ warehouse, and no customers.
 
 ## 9. Output format
 
-At this phase the program prints the input data and one random initial
-route with its distance. This is the actual output of `python3 main.py`:
+For each algorithm the program prints the best route, best distance,
+execution time and number of iterations. This is the actual output of
+`python3 main.py` for Hill Climbing (the input data listing printed before
+it is left out here; the execution time differs slightly on every run):
 
 ```
-==================================================
-INPUT DATA
-==================================================
-Warehouse W: (50, 50)
-Customers: 5
-  C1: (20, 30)
-  C2: (70, 20)
-  C3: (80, 70)
-  C4: (30, 80)
-  C5: (60, 10)
+Random seed: 42
 
 ==================================================
-RANDOM INITIAL ROUTE (no optimization yet)
+HILL CLIMBING
 ==================================================
-Seed:
-42
 
-Route:
+Initial route:
 W -> C4 -> C2 -> C3 -> C5 -> C1 -> W
 
-Total distance:
+Initial distance:
 303.18
+
+Best route:
+W -> C4 -> C3 -> C2 -> C5 -> C1 -> W
+
+Best distance:
+232.95
+
+Execution time:
+0.0001 seconds
+
+Iterations:
+2
+
+Stopped because:
+local optimum (no improving neighbour)
 ```
 
-Per-algorithm results (best route, best distance, execution time,
-iterations/generations) are added in Phases 2–4.
+One iteration means one full look at the neighbourhood. The last iteration
+is the one that finds no improving neighbour, which is how the algorithm
+knows it has reached a local optimum.
+
+Results for Simulated Annealing and the Genetic Algorithm are added in
+Phases 3–4.
 
 ## 10. Installation
 
@@ -156,7 +199,15 @@ python3 -m unittest discover -s tests -v
 
 ## 14. Parameters
 
-*Algorithm parameters are documented here as each algorithm is added.*
+Parameters are set at the top of `main.py`.
+
+**Hill Climbing**
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `HC_MAX_ITERATIONS` | 1000 | Safety limit on iterations. Normally the search stops earlier, at a local optimum. |
+
+*Parameters for the other algorithms are added with them.*
 
 ## 15. Project structure
 
@@ -164,7 +215,8 @@ python3 -m unittest discover -s tests -v
 delivery-route-optimization/
 ├── data/
 │   └── input.csv            sample input
-├── algorithms/              the three algorithms (Phases 2–4)
+├── algorithms/
+│   └── hill_climbing.py     Hill Climbing (others added in Phases 3–4)
 ├── utils/
 │   ├── data_loader.py       reads and checks the CSV
 │   ├── distance.py          Euclidean distance and the route cost function
@@ -172,7 +224,8 @@ delivery-route-optimization/
 ├── experiments/             experiment runner (Phase 5)
 ├── results/                 saved plots and result files (Phases 5–6)
 ├── tests/
-│   └── test_phase1.py
+│   ├── test_phase1.py
+│   └── test_hill_climbing.py
 ├── main.py
 ├── requirements.txt
 └── README.md

@@ -25,6 +25,19 @@ def random_route(customer_ids, rng):
     return route
 
 
+def swap_positions(customer_route, i, j):
+    """
+    ACTION: swap the customers at positions i and j.
+
+    Returns a new route and leaves the given route unchanged. Swapping
+    only moves customers around, so the result is always a valid route
+    (TRANSITION MODEL).
+    """
+    new_route = list(customer_route)
+    new_route[i], new_route[j] = new_route[j], new_route[i]
+    return new_route
+
+
 def build_complete_route(customer_route):
     """Add the warehouse at the beginning and at the end."""
     return [WAREHOUSE_ID] + list(customer_route) + [WAREHOUSE_ID]
