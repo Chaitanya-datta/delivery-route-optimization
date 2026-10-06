@@ -6,8 +6,8 @@ Usage:
     python3 main.py
     python3 main.py --input data/input.csv --seed 42
 
-Phase 2: loads the input and runs Hill Climbing.
-Simulated Annealing and the Genetic Algorithm are added in later phases.
+Phase 3: loads the input and runs Hill Climbing and Simulated Annealing.
+The Genetic Algorithm is added in a later phase.
 """
 
 import argparse
@@ -16,6 +16,7 @@ import random
 import sys
 
 from algorithms.hill_climbing import hill_climbing
+from algorithms.simulated_annealing import simulated_annealing
 from utils.data_loader import WAREHOUSE_ID, load_locations
 from utils.route import build_complete_route, format_route, validate_complete_route
 
@@ -25,6 +26,12 @@ DEFAULT_SEED = 42
 
 # Hill Climbing parameters
 HC_MAX_ITERATIONS = 1000
+
+# Simulated Annealing parameters
+SA_INITIAL_TEMPERATURE = 100.0
+SA_COOLING_RATE = 0.999
+SA_MINIMUM_TEMPERATURE = 0.001
+SA_MAX_ITERATIONS = 20000
 
 
 def print_heading(title):
@@ -72,15 +79,30 @@ def main():
     print_locations(locations, customer_ids)
     print(f"Random seed: {args.seed}\n")
 
-    # One random generator, created from the seed, so runs are reproducible.
-    rng = random.Random(args.seed)
+    # Each algorithm gets its own random generator created from the same
+    # seed. Runs are reproducible, and both algorithms start from the
+    # same random initial route.
+    hc_result = hill_climbing(
+        locations,
+        customer_ids,
+        random.Random(args.seed),
+        max_iterations=HC_MAX_ITERATIONS,
+    )
 
-    result = hill_climbing(locations, customer_ids, rng, max_iterations=HC_MAX_ITERATIONS)
+    sa_result = simulated_annealing(
+        locations,
+        customer_ids,
+        random.Random(args.seed),
+        initial_temperature=SA_INITIAL_TEMPERATURE,
+        cooling_rate=SA_COOLING_RATE,
+        minimum_temperature=SA_MINIMUM_TEMPERATURE,
+        max_iterations=SA_MAX_ITERATIONS,
+    )
 
-    # Check that the algorithm returned a valid route.
-    validate_complete_route(build_complete_route(result["best_route"]), customer_ids)
-
-    print_result(result, "Iterations")
+    for result in [hc_result, sa_result]:
+        # Check that the algorithm returned a valid route.
+        validate_complete_route(build_complete_route(result["best_route"]), customer_ids)
+        print_result(result, "Iterations")
 
 
 if __name__ == "__main__":

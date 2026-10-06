@@ -1,7 +1,7 @@
 # Comparative Delivery Route Optimization Using Hill Climbing, Simulated Annealing and Genetic Algorithm
 
-> **Status:** Phases 1–2 of 7 are complete (input loading, distance, route
-> representation, route validation, Hill Climbing). Simulated Annealing, the
+> **Status:** Phases 1–3 of 7 are complete (input loading, distance, route
+> representation, route validation, Hill Climbing, Simulated Annealing). The
 > Genetic Algorithm, the experiments and the plots are added in later phases,
 > and this README is updated as each one is finished.
 
@@ -90,7 +90,60 @@ deterministic.
 
 ## 6. Simulated Annealing
 
-*To be implemented in Phase 3.*
+Code: `algorithms/simulated_annealing.py`
+
+Simulated Annealing also keeps **one** current route and uses the same swap
+move, but it is allowed to accept a worse route sometimes. This is what lets
+it leave a local optimum.
+
+1. Start from a random route and set the temperature to `initial_temperature`.
+2. Make **one** random neighbour by swapping two random customer positions.
+3. Calculate `delta = neighbour_cost - current_cost`.
+4. **Decision:**
+   - if `delta < 0` the neighbour is shorter, so accept it;
+   - otherwise calculate `probability = exp(-delta / temperature)`, draw a
+     random number between 0 and 1, and accept the worse route only if
+     `random_number < probability`.
+5. Remember the best route seen so far (the current route may get worse).
+6. Cool down: `temperature = temperature * cooling_rate`.
+7. Repeat until the temperature falls below `minimum_temperature` or the
+   iteration limit is reached.
+
+The decision in the code is:
+
+```python
+delta = neighbour_cost - current_cost
+
+if delta < 0:
+    # AI DECISION: always accept a better route.
+    accept = True
+else:
+    # AI DECISION: probabilistically accept a worse route based on temperature.
+    probability = acceptance_probability(delta, temperature)
+    random_number = rng.random()
+    accept = random_number < probability
+```
+
+**How the temperature controls the search**
+
+| Route is worse by | Temperature 100 | Temperature 10 | Temperature 1 |
+|---|---|---|---|
+| 10 | exp(-0.1) = 0.905 | exp(-1) = 0.368 | exp(-10) = 0.00005 |
+| 50 | exp(-0.5) = 0.607 | exp(-5) = 0.007 | exp(-50) ≈ 0 |
+
+- **High temperature:** worse routes are accepted often, so the search
+  explores widely.
+- **Low temperature:** worse routes are almost never accepted, so the search
+  behaves like Hill Climbing and settles into a good route.
+- A slightly worse route is always more likely to be accepted than a much
+  worse one.
+
+**Division by zero** cannot happen: the temperature must start above 0, is
+only ever multiplied by a positive cooling rate, and the loop stops once it
+drops below `minimum_temperature` (which must also be above 0).
+
+Simulated Annealing does not guarantee the shortest route. It only makes
+getting stuck in a poor local optimum less likely.
 
 ## 7. Genetic Algorithm
 
@@ -123,8 +176,8 @@ warehouse, and no customers.
 
 For each algorithm the program prints the best route, best distance,
 execution time and number of iterations. This is the actual output of
-`python3 main.py` for Hill Climbing (the input data listing printed before
-it is left out here; the execution time differs slightly on every run):
+`python3 main.py` (the input data listing printed before it is left out
+here; execution times differ slightly on every run):
 
 ```
 Random seed: 42
@@ -146,21 +199,51 @@ Best distance:
 232.95
 
 Execution time:
-0.0001 seconds
+0.0000 seconds
 
 Iterations:
 2
 
 Stopped because:
 local optimum (no improving neighbour)
+
+==================================================
+SIMULATED ANNEALING
+==================================================
+
+Initial route:
+W -> C4 -> C2 -> C3 -> C5 -> C1 -> W
+
+Initial distance:
+303.18
+
+Best route:
+W -> C4 -> C3 -> C2 -> C5 -> C1 -> W
+
+Best distance:
+232.95
+
+Execution time:
+0.0383 seconds
+
+Iterations:
+11508
+
+Stopped because:
+minimum temperature reached
 ```
 
-One iteration means one full look at the neighbourhood. The last iteration
-is the one that finds no improving neighbour, which is how the algorithm
-knows it has reached a local optimum.
+An iteration means different things for the two algorithms:
 
-Results for Simulated Annealing and the Genetic Algorithm are added in
-Phases 3–4.
+- **Hill Climbing:** one full look at the whole neighbourhood (every
+  possible swap). The last iteration is the one that finds no improving
+  neighbour.
+- **Simulated Annealing:** one random swap tried.
+
+Both algorithms are given the same seed, so they start from the same random
+initial route.
+
+Results for the Genetic Algorithm are added in Phase 4.
 
 ## 10. Installation
 
@@ -207,7 +290,19 @@ Parameters are set at the top of `main.py`.
 |---|---|---|
 | `HC_MAX_ITERATIONS` | 1000 | Safety limit on iterations. Normally the search stops earlier, at a local optimum. |
 
-*Parameters for the other algorithms are added with them.*
+**Simulated Annealing**
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `SA_INITIAL_TEMPERATURE` | 100.0 | Starting temperature. Chosen to be of the same order as the distance change one swap causes on a 100 x 100 map, so worse routes are accepted often at the start. |
+| `SA_COOLING_RATE` | 0.999 | The temperature is multiplied by this after every iteration. |
+| `SA_MINIMUM_TEMPERATURE` | 0.001 | The search stops when the temperature falls below this. |
+| `SA_MAX_ITERATIONS` | 20000 | Safety limit on iterations. |
+
+With these values the temperature reaches the minimum after 11,508
+iterations, so that is where the search normally stops.
+
+*Parameters for the Genetic Algorithm are added with it.*
 
 ## 15. Project structure
 
@@ -216,7 +311,8 @@ delivery-route-optimization/
 ├── data/
 │   └── input.csv            sample input
 ├── algorithms/
-│   └── hill_climbing.py     Hill Climbing (others added in Phases 3–4)
+│   ├── hill_climbing.py
+│   └── simulated_annealing.py   (Genetic Algorithm added in Phase 4)
 ├── utils/
 │   ├── data_loader.py       reads and checks the CSV
 │   ├── distance.py          Euclidean distance and the route cost function
@@ -225,7 +321,8 @@ delivery-route-optimization/
 ├── results/                 saved plots and result files (Phases 5–6)
 ├── tests/
 │   ├── test_phase1.py
-│   └── test_hill_climbing.py
+│   ├── test_hill_climbing.py
+│   └── test_simulated_annealing.py
 ├── main.py
 ├── requirements.txt
 └── README.md
