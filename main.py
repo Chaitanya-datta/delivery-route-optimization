@@ -6,8 +6,7 @@ Usage:
     python3 main.py
     python3 main.py --input data/input.csv --seed 42
 
-Phase 3: loads the input and runs Hill Climbing and Simulated Annealing.
-The Genetic Algorithm is added in a later phase.
+Loads the input and runs all three algorithms on it.
 """
 
 import argparse
@@ -15,6 +14,7 @@ import os
 import random
 import sys
 
+from algorithms.genetic_algorithm import genetic_algorithm
 from algorithms.hill_climbing import hill_climbing
 from algorithms.simulated_annealing import simulated_annealing
 from utils.data_loader import WAREHOUSE_ID, load_locations
@@ -32,6 +32,12 @@ SA_INITIAL_TEMPERATURE = 100.0
 SA_COOLING_RATE = 0.999
 SA_MINIMUM_TEMPERATURE = 0.001
 SA_MAX_ITERATIONS = 20000
+
+# Genetic Algorithm parameters
+GA_POPULATION_SIZE = 50
+GA_GENERATIONS = 200
+GA_TOURNAMENT_SIZE = 3
+GA_MUTATION_RATE = 0.2
 
 
 def print_heading(title):
@@ -51,12 +57,17 @@ def print_locations(locations, customer_ids):
     print()
 
 
-def print_result(result, count_name):
-    """Print the result of one algorithm. count_name is 'Iterations' or 'Generations'."""
+def print_result(result, count_name, start_name):
+    """
+    Print the result of one algorithm.
+
+    count_name - 'Iterations' or 'Generations'
+    start_name - what the starting route is called for this algorithm
+    """
     print_heading(result["algorithm"].upper())
     print()
-    print(f"Initial route:\n{format_route(result['initial_route'])}\n")
-    print(f"Initial distance:\n{result['initial_distance']:.2f}\n")
+    print(f"{start_name}:\n{format_route(result['initial_route'])}\n")
+    print(f"Distance of that route:\n{result['initial_distance']:.2f}\n")
     print(f"Best route:\n{format_route(result['best_route'])}\n")
     print(f"Best distance:\n{result['best_distance']:.2f}\n")
     print(f"Execution time:\n{result['execution_time']:.4f} seconds\n")
@@ -80,8 +91,8 @@ def main():
     print(f"Random seed: {args.seed}\n")
 
     # Each algorithm gets its own random generator created from the same
-    # seed. Runs are reproducible, and both algorithms start from the
-    # same random initial route.
+    # seed. Runs are reproducible, and Hill Climbing and Simulated
+    # Annealing start from the same random initial route.
     hc_result = hill_climbing(
         locations,
         customer_ids,
@@ -99,10 +110,23 @@ def main():
         max_iterations=SA_MAX_ITERATIONS,
     )
 
-    for result in [hc_result, sa_result]:
-        # Check that the algorithm returned a valid route.
+    ga_result = genetic_algorithm(
+        locations,
+        customer_ids,
+        random.Random(args.seed),
+        population_size=GA_POPULATION_SIZE,
+        generations=GA_GENERATIONS,
+        tournament_size=GA_TOURNAMENT_SIZE,
+        mutation_rate=GA_MUTATION_RATE,
+    )
+
+    # Check that every algorithm returned a valid route.
+    for result in [hc_result, sa_result, ga_result]:
         validate_complete_route(build_complete_route(result["best_route"]), customer_ids)
-        print_result(result, "Iterations")
+
+    print_result(hc_result, "Iterations", "Initial route")
+    print_result(sa_result, "Iterations", "Initial route")
+    print_result(ga_result, "Generations", "Best route in the initial population")
 
 
 if __name__ == "__main__":

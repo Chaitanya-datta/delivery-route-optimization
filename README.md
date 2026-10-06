@@ -1,9 +1,8 @@
 # Comparative Delivery Route Optimization Using Hill Climbing, Simulated Annealing and Genetic Algorithm
 
-> **Status:** Phases 1–3 of 7 are complete (input loading, distance, route
-> representation, route validation, Hill Climbing, Simulated Annealing). The
-> Genetic Algorithm, the experiments and the plots are added in later phases,
-> and this README is updated as each one is finished.
+> **Status:** Phases 1–4 of 7 are complete. All three algorithms are
+> implemented and tested. The experiments and the plots are added in later
+> phases, and this README is updated as each one is finished.
 
 ## 1. Problem statement
 
@@ -147,7 +146,72 @@ getting stuck in a poor local optimum less likely.
 
 ## 7. Genetic Algorithm
 
-*To be implemented in Phase 4.*
+Code: `algorithms/genetic_algorithm.py`
+
+The Genetic Algorithm does not improve one route. It keeps a **population**
+of routes and builds a new population from it in every **generation**.
+
+- **Chromosome:** one customer ordering, e.g. `[C1, C4, C3, C2, C5]`. The
+  warehouse is not part of the chromosome.
+- **Fitness:** the route distance itself. This is a minimization problem, so
+  a shorter route is a fitter chromosome.
+
+Steps:
+
+1. Create a population of random valid routes and calculate every distance.
+2. Copy the best route of the population unchanged into the new population
+   (*elitism*), so a good route is never lost.
+3. **Selection:** choose two parents by tournament selection.
+4. **Crossover:** combine the two parents into one child.
+5. **Mutation:** with a small probability, swap two customers of the child.
+6. Repeat steps 3–5 until the new population is full, then replace the old
+   population with it.
+7. Remember the best route seen in the whole run.
+8. Repeat from step 2 for the chosen number of generations.
+
+**Tournament selection.** Pick a few routes at random (3 by default) and
+keep the shortest of them. Shorter routes win more often, so they become
+parents more often, but a weaker route can still be picked if it only meets
+weaker rivals. That keeps some variety in the population.
+
+```python
+# AI DECISION: the competitor with the shorter route wins.
+if costs[index] < costs[winner]:
+    winner = index
+```
+
+**Order Crossover.** A normal one-point crossover would break the route:
+
+```
+parent1 = [C1, C2, C3, C4, C5]
+parent2 = [C3, C5, C1, C2, C4]
+one-point child = [C1, C2 | C1, C2, C4]   C1 and C2 twice, C3 and C5 missing
+```
+
+Order Crossover avoids this:
+
+1. Copy a random slice of parent 1 into the same positions of the child.
+2. Fill the empty positions, left to right, with the remaining customers in
+   the order they appear in parent 2.
+
+```
+parent1 = [C1, C2, C3, C4, C5]
+parent2 = [C3, C5, C1, C2, C4]
+step 1  = [ _, C2, C3,  _,  _]      slice (positions 1 to 2) from parent1
+step 2  = [C5, C2, C3, C1, C4]      C5, C1, C4 in parent2's order
+```
+
+Every customer appears exactly once, and the parents are not changed.
+
+**Swap mutation.** With probability `mutation_rate`, two random customers of
+the child are swapped. Mutation creates orderings that crossover alone
+cannot produce from the current population.
+
+**Best solution tracking.** After every generation the best route of that
+generation is compared with the best route of the whole run, and the better
+one is kept. The route returned at the end is the best of the whole run.
+
+The Genetic Algorithm does not guarantee the shortest route either.
 
 ## 8. Input format
 
@@ -175,9 +239,9 @@ warehouse, and no customers.
 ## 9. Output format
 
 For each algorithm the program prints the best route, best distance,
-execution time and number of iterations. This is the actual output of
-`python3 main.py` (the input data listing printed before it is left out
-here; execution times differ slightly on every run):
+execution time and number of iterations or generations. This is the actual
+output of `python3 main.py` (the input data listing printed before it is
+left out here; execution times differ slightly on every run):
 
 ```
 Random seed: 42
@@ -189,7 +253,7 @@ HILL CLIMBING
 Initial route:
 W -> C4 -> C2 -> C3 -> C5 -> C1 -> W
 
-Initial distance:
+Distance of that route:
 303.18
 
 Best route:
@@ -214,7 +278,7 @@ SIMULATED ANNEALING
 Initial route:
 W -> C4 -> C2 -> C3 -> C5 -> C1 -> W
 
-Initial distance:
+Distance of that route:
 303.18
 
 Best route:
@@ -224,26 +288,58 @@ Best distance:
 232.95
 
 Execution time:
-0.0383 seconds
+0.0379 seconds
 
 Iterations:
 11508
 
 Stopped because:
 minimum temperature reached
+
+==================================================
+GENETIC ALGORITHM
+==================================================
+
+Best route in the initial population:
+W -> C3 -> C2 -> C5 -> C1 -> C4 -> W
+
+Distance of that route:
+232.95
+
+Best route:
+W -> C4 -> C3 -> C2 -> C5 -> C1 -> W
+
+Best distance:
+232.95
+
+Execution time:
+0.0774 seconds
+
+Generations:
+200
+
+Stopped because:
+generation limit reached
 ```
 
-An iteration means different things for the two algorithms:
+The unit of work is different for each algorithm:
 
-- **Hill Climbing:** one full look at the whole neighbourhood (every
-  possible swap). The last iteration is the one that finds no improving
-  neighbour.
-- **Simulated Annealing:** one random swap tried.
+- **Hill Climbing iteration:** one full look at the whole neighbourhood
+  (every possible swap). The last iteration is the one that finds no
+  improving neighbour.
+- **Simulated Annealing iteration:** one random swap tried.
+- **Genetic Algorithm generation:** one complete new population created and
+  evaluated.
 
-Both algorithms are given the same seed, so they start from the same random
-initial route.
+All algorithms are given the same seed. Hill Climbing and Simulated
+Annealing therefore start from the same random initial route.
 
-Results for the Genetic Algorithm are added in Phase 4.
+Note on this small sample: with only 5 customers there are just 120 possible
+routes, so the Genetic Algorithm's first random population of 50 already
+contains a shortest route. The sample also has more than one route of length
+232.95, which is why two different routes with the same distance appear in
+the Genetic Algorithm output. The differences between the algorithms show up
+on larger inputs (Phase 5).
 
 ## 10. Installation
 
@@ -302,7 +398,22 @@ Parameters are set at the top of `main.py`.
 With these values the temperature reaches the minimum after 11,508
 iterations, so that is where the search normally stops.
 
-*Parameters for the Genetic Algorithm are added with it.*
+**Genetic Algorithm**
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `GA_POPULATION_SIZE` | 50 | Number of routes in the population. |
+| `GA_GENERATIONS` | 200 | Number of new populations created. |
+| `GA_TOURNAMENT_SIZE` | 3 | Number of routes compared in each selection. |
+| `GA_MUTATION_RATE` | 0.2 | Probability that a child has two customers swapped. |
+
+The best route of each generation is always copied into the next one
+(elitism of one route).
+
+**Amount of work.** The Genetic Algorithm calculates
+50 x (200 + 1) = 10,050 route distances per run, and Simulated Annealing
+11,509, so those two do a similar amount of work. Hill Climbing does much
+less because it stops as soon as it reaches a local optimum.
 
 ## 15. Project structure
 
@@ -312,7 +423,8 @@ delivery-route-optimization/
 │   └── input.csv            sample input
 ├── algorithms/
 │   ├── hill_climbing.py
-│   └── simulated_annealing.py   (Genetic Algorithm added in Phase 4)
+│   ├── simulated_annealing.py
+│   └── genetic_algorithm.py
 ├── utils/
 │   ├── data_loader.py       reads and checks the CSV
 │   ├── distance.py          Euclidean distance and the route cost function
@@ -322,7 +434,8 @@ delivery-route-optimization/
 ├── tests/
 │   ├── test_phase1.py
 │   ├── test_hill_climbing.py
-│   └── test_simulated_annealing.py
+│   ├── test_simulated_annealing.py
+│   └── test_genetic_algorithm.py
 ├── main.py
 ├── requirements.txt
 └── README.md
